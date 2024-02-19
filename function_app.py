@@ -40,7 +40,7 @@ sun_direction = {
 
 shelly_auth = os.getenv('SHELLY_AUTH_TOKEN')
 
-# Call the weather API
+# get the weather forecast for the current hour, to see whether the sun will shine
 api_key = os.getenv('OPENWEATHERMAP_API_KEY')
 city = 'Schmölln-Putzkau, DE'
 response = requests.get(f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}')
@@ -53,42 +53,50 @@ if 'weather' in weather_data:
     current_time = datetime.datetime.now(tz=berlin_tz)
     current_hour = current_time.hour
 
+    bulk_control_data = []
+    #iterate over the devices and check whether the sun will shine at the current hour and the window is impacted, if so, tell it to close, if not, tell it to open
     for device_id, device_direction, device_name in all_device_ids:
         if device_direction == sun_direction[current_hour] and sunrise_time.hour <= current_hour <= sunset_time.hour:
-            logging.info(f'The sun will shine at {current_hour}:00.')
-            channel = '2'
-        else:
-            logging.info(f'The sun will not shine at {current_hour}:00.')
+            logging.info(f'The sun will shine at {current_hour}:00 for {device_name}, closing the blind.')
             channel = '1'
+        else:
+            logging.info(f'The sun will not shine at {current_hour}:00 for {device_name}, opening the blind.')
+            channel = '0'
 
-        payload = {
-            'channel': channel,
-            'turn': 'on',
-            'id': device_id,
-            'auth_key': shelly_auth
-        }
-        response = requests.post(f'https://shelly-27-eu.shelly.cloud/device/relay/control', data=payload)
-        if response.status_code == 200:
-            if channel == '1':
-                logging.info(f'Opening blinds for {device_name}.')
-            else:
-                logging.info(f'Closing blinds for {device_name}.')
-        else:
-            logging.error(f'Failed to open/close blind {device_name}. Error: {response.text}')
-        
-        time.sleep(60)  # Pause execution for 1 minute, to wait for blind to close or open
-        # Disable switch again for next interaction
-        payload = {
-            'channel': channel,
-            'turn': 'off',
-            'id': device_id,
-            'auth_key': shelly_auth
-        }
-        response = requests.post(f'https://shelly-27-eu.shelly.cloud/device/relay/control', data=payload)
-        if response.status_code == 200:
-            logging.info(f'Turning off {device_name} on channel {channel}.')
-        else:
-            logging.error(f'Failed to turn off {device_name} on channel {channel}. Error: {response.text}')
+            payload = {
+                'id': device_id,
+                'channel': channel,
+                'turn': 'on'
+            }
+            #prepare the bulk control request by adding the payload to the list for this device
+            bulk_control_data.append(payload)
+
+    payload = {
+        'devices': bulk_control_data,
+        'auth_key': shelly_auth
+    }
+    bulk_control_data.append(payload)
+
+    response = requests.post(f'https://shelly-27-eu.shelly.cloud/device/relay/bulk_control', json=bulk_control_data)
+
+    if response.status_code == 200:
+        logging.info('Bulk control request sent successfully.')
+    else:
+        logging.error(f'Failed to send bulk control request. Error: {response.text}')
+
+    #wait for 60 seconds to let the blinds close
+    time.sleep(60)
+    #turn off all devices so they can be controlled again
+    for data in bulk_control_data:
+        data['turn'] = 'off'
+
+    response = requests.post(f'https://shelly-27-eu.shelly.cloud/device/relay/bulk_control', json=bulk_control_data)
+
+    if response.status_code == 200:
+        logging.info('Bulk control request sent successfully.')
+    else:
+        logging.error(f'Failed to send bulk control request. Error: {response.text}')
+    
 else:
     logging.error('Failed to fetch or read weather data.')    
     
