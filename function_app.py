@@ -43,7 +43,7 @@ berlin_tz = pytz.timezone('Europe/Berlin')
 current_time = datetime.datetime.now(tz=berlin_tz)
 current_hour = current_time.hour
 city = 'Schmölln-Putzkau, DE'
-logging.info(f'Checking sunshine forecat for {city} at {current_hour}.')
+logging.info(f'Checking sunshine forecast for {city} at {current_hour}.')
 
 # get the weather forecast for the current hour, to see whether the sun will shine
 api_key = os.getenv('OPENWEATHERMAP_API_KEY')
