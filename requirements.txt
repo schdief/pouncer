@@ -4,8 +4,4 @@
 
 azure-functions
 requests
-logging
-os
-datetime
 pytz
-time
