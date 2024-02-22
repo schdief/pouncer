@@ -69,7 +69,6 @@ def main(mytimer: func.TimerRequest) -> None:
 
             # prepare device payload
             payload_str = f"channel={channel}&turn=on&id={device_id}&auth_key={shelly_auth}"
-            logging.info(f'Payload: {payload_str}')
 
             headers = {'content-type': 'application/x-www-form-urlencoded'}
             response = requests.post(f'https://shelly-27-eu.shelly.cloud/device/relay/control', data=payload_str, headers=headers)
