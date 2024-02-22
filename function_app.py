@@ -56,12 +56,18 @@ def main(mytimer: func.TimerRequest) -> None:
     if 'weather' in weather_data:
         sunrise_time = datetime.datetime.fromtimestamp(weather_data['sys']['sunrise'], tz=berlin_tz)
         sunset_time = datetime.datetime.fromtimestamp(weather_data['sys']['sunset'], tz=berlin_tz)
+        weather_condition = weather_data['weather'][0]['main']
+        temperature_kelvin = weather_data['main']['temp']
+        temperature_celsius = temperature_kelvin - 273.15
         shelly_auth = os.getenv('SHELLY_AUTH_TOKEN')
         #iterate over the devices and check whether the sun will shine at the current hour and the window is impacted
         #if so, tell it to close, if not, tell it to open
         for device_id, device_direction, device_name in all_device_ids:
-            if device_direction == sun_direction[current_hour] and sunrise_time.hour <= current_hour <= sunset_time.hour:
-                logging.info(f'The sun will shine at {current_hour}:00 for {device_name}, closing the blind.')
+            if (device_direction == sun_direction[current_hour] and 
+                sunrise_time.hour <= current_hour <= sunset_time.hour and 
+                weather_condition == 'Clear' and
+                temperature_celsius >= 15):
+                logging.info(f'The sun will shine at {current_hour}:00 for {device_name} with a weather condition of {weather_condition} at {temperature_celsius} °C, closing the blind.')
                 channel = "1"
             else:
                 logging.info(f'The sun will not shine at {current_hour}:00 for {device_name}, opening the blind.')
@@ -85,4 +91,4 @@ def main(mytimer: func.TimerRequest) -> None:
     else:
         logging.error('Failed to fetch or read weather data - mission abort.')    
 
-    #TODO: send a mail or telegram on error
+    #TODO: send a mail on error via https://sendgrid.com/en-us/pricing
