@@ -18,8 +18,13 @@
 
 name: Deploy Python project to Azure Function App
 
-on: workflow_dispatch
-
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        type: string
+        description: Who to greet
+        
 env:
   AZURE_FUNCTIONAPP_NAME: 'pouncer'   # set this to your function app name on Azure
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'       # set this to the path to your function app project, defaults to the repository root
